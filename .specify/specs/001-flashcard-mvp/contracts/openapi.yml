@@ -1,0 +1,335 @@
+openapi: 3.0.3
+info:
+  title: VocabApp Flashcard MVP API
+  description: Minimal API for vocabulary learning flashcard application
+  version: 1.0.0
+  contact:
+    name: VocabApp Support
+    email: support@vocabapp.com
+
+servers:
+  - url: https://api.vocabapp.com
+    description: Production server
+  - url: http://localhost:3000
+    description: Development server
+
+paths:
+  /api/words/random:
+    get:
+      summary: Get random word for guest users
+      description: Returns a random dictionary entry for unauthenticated flashcard review
+      operationId: getRandomWord
+      tags:
+        - Words
+      responses:
+        '200':
+          description: Random word retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordResponse'
+        '404':
+          description: No words available in dictionary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/words/next:
+    get:
+      summary: Get next prioritized word for authenticated user
+      description: Returns the next word based on learning priority (new → unknown → known)
+      operationId: getNextWord
+      tags:
+        - Words
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Prioritized word retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordWithProgressResponse'
+        '401':
+          description: Unauthorized - valid authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No words available for review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/progress:
+    post:
+      summary: Update word progress
+      description: Updates the learning status for a specific word
+      operationId: updateProgress
+      tags:
+        - Progress
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressUpdateRequest'
+      responses:
+        '200':
+          description: Progress updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - valid authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Word not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/progress/statistics:
+    get:
+      summary: Get user statistics
+      description: Returns learning statistics for the authenticated user
+      operationId: getStatistics
+      tags:
+        - Progress
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatisticsResponse'
+        '401':
+          description: Unauthorized - valid authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    WordResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Unique word identifier
+            english_word:
+              type: string
+              description: English vocabulary word
+            chinese_translation:
+              type: string
+              description: Chinese translation
+            example_sentence:
+              type: string
+              nullable: true
+              description: Example usage sentence
+          required:
+            - id
+            - english_word
+            - chinese_translation
+      required:
+        - success
+        - data
+
+    WordWithProgressResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Unique word identifier
+            english_word:
+              type: string
+              description: English vocabulary word
+            chinese_translation:
+              type: string
+              description: Chinese translation
+            example_sentence:
+              type: string
+              nullable: true
+              description: Example usage sentence
+            status:
+              type: string
+              enum: [new, known, unknown]
+              description: User's learning status for this word
+            last_reviewed_at:
+              type: string
+              format: date-time
+              nullable: true
+              description: Timestamp of last review
+          required:
+            - id
+            - english_word
+            - chinese_translation
+            - status
+      required:
+        - success
+        - data
+
+    ProgressUpdateRequest:
+      type: object
+      properties:
+        word_id:
+          type: string
+          format: uuid
+          description: Word identifier to update
+        status:
+          type: string
+          enum: [known, unknown]
+          description: New learning status
+      required:
+        - word_id
+        - status
+
+    ProgressResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            user_id:
+              type: string
+              description: User identifier
+            word_id:
+              type: string
+              format: uuid
+              description: Word identifier
+            status:
+              type: string
+              enum: [new, known, unknown]
+              description: Updated learning status
+            last_reviewed_at:
+              type: string
+              format: date-time
+              description: Timestamp of update
+          required:
+            - user_id
+            - word_id
+            - status
+            - last_reviewed_at
+      required:
+        - success
+        - data
+
+    StatisticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+              minimum: 0
+              description: Total unique words reviewed
+            today:
+              type: integer
+              minimum: 0
+              description: Words reviewed today
+            thisWeek:
+              type: integer
+              minimum: 0
+              description: Words reviewed this week
+            remaining:
+              type: integer
+              minimum: 0
+              description: Words remaining to review
+          required:
+            - total
+            - today
+            - thisWeek
+            - remaining
+      required:
+        - success
+        - data
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code for debugging
+      required:
+        - success
+        - error
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk authentication token
+
+security:
+  - bearerAuth: []
