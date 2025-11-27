@@ -1,10 +1,15 @@
 <!--
 Sync Impact Report:
-- Version change: 0.0.0 → 1.0.0 (Initial constitution creation)
-- Added sections: Core Principles (I-VII), Technical Architecture, UX Standards, Development Workflow, Governance
-- No modified or removed sections (first version)
-- Templates requiring updates: plan-template.md, spec-template.md, tasks-template.md (✅ verified compatible)
-- No follow-up TODOs
+- Version change: 1.0.0 → 2.0.0 (Major architecture change: Server-First → Client-First)
+- Modified principles:
+  - II. Technical Minimalism: Updated data access strategy
+  - III. Server-First Architecture → Client-First Architecture (renamed and redefined)
+- Updated sections:
+  - Technical Architecture / Data Flow: Simplified to client-only flow
+  - Development Workflow / Code Quality Gates: Updated component preference
+- No sections added or removed
+- Templates requiring updates: plan-template.md, spec-template.md, tasks-template.md (⚠ pending - architecture change requires review)
+- Follow-up TODOs: Review and update existing implementation plan to align with client-first architecture
 -->
 
 # VocabApp Constitution
@@ -17,14 +22,14 @@ Deliver a clean, extremely simple MVP for Chinese users learning English vocabul
 **Rationale**: Scope creep is the enemy of shipping. A simple, working flashcard app is infinitely more valuable than a complex, unfinished learning platform.
 
 ### II. Technical Minimalism
-Use Supabase as the only backend & database. Use Clerk for authentication. Use Next.js App Router with server-side calls via Supabase client + RLS. No complex backend logic unless absolutely necessary.
+Use Supabase as the only backend & database. Use Clerk for authentication. Use Next.js App Router with **Supabase JS browser client** for all reads/writes. No complex backend logic unless absolutely necessary.
 
 **Rationale**: Technical complexity should match product complexity. These tools provide everything needed for an MVP without custom backend infrastructure.
 
-### III. Server-First Architecture
-Prefer server components except where explicit interactivity is required. All database operations must be typed and use server-side calls. Client components are the exception, not the rule.
+### III. Client-First Architecture
+**Prefer client components** for all interactive screens. All database operations must use the **Supabase JS browser client**. Server components are only used for static layouts and initial page loads.
 
-**Rationale**: Server components provide better performance, security, and simpler data fetching. They align with Next.js best practices and reduce client-side complexity.
+**Rationale**: Client-first architecture enables zero-backend complexity while maintaining full interactivity. RLS policies provide security at the database level without server-side validation complexity.
 
 ### IV. Flashcard Interaction Simplicity
 Flashcard interface: Space = reveal word details, Left arrow = mark as unknown, Right arrow = mark as known. No complex gestures, no multi-step interactions.
@@ -57,10 +62,10 @@ Generate artifacts directly from specifications. Keep each AI-generated part sma
 - **Styling**: Tailwind CSS (minimal)
 
 ### Data Flow
-1. Server components fetch data via Supabase client
-2. RLS policies enforce security at database level
-3. Client components handle only interactive elements
-4. All mutations go through server actions
+1. Client Component → Supabase Client (browser) → RLS → Postgres
+2. **Explicitly**: No Server Actions or Route Handlers are used
+3. All data operations happen directly in the browser via Supabase JS client
+4. RLS policies enforce security at database level
 
 ### Database Principles
 - Single dictionary table for MVP
@@ -94,8 +99,8 @@ Generate artifacts directly from specifications. Keep each AI-generated part sma
 1. TypeScript compilation must pass
 2. ESLint rules must pass
 3. All database operations typed
-4. Server components preferred
-5. No client-side data fetching except when necessary
+4. **Client components preferred for interactivity**
+5. No server-side data fetching except for initial page loads
 
 ### Testing Requirements
 - Unit tests for utility functions
@@ -129,4 +134,4 @@ Generate artifacts directly from specifications. Keep each AI-generated part sma
 - Maintain backward compatibility where possible
 - Breaking changes require team discussion
 
-**Version**: 1.0.0 | **Ratified**: 2025-11-27 | **Last Amended**: 2025-11-27
+**Version**: 2.0.0 | **Ratified**: 2025-11-27 | **Last Amended**: 2025-11-27
