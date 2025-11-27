@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__github_github-mcp-server__get_me",
+      "mcp__filesystem__list_directory",
+      "mcp__github_github-mcp-server__create_repository",
+      "Bash(git remote add origin https://github.com/Xianghbb/vocab-app.git)",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
