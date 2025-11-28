@@ -7,7 +7,12 @@
       "Bash(git remote add origin https://github.com/Xianghbb/vocab-app.git)",
       "Bash(git push:*)",
       "Bash(git fetch:*)",
-      "Bash(.specify/scripts/powershell/setup-plan.ps1:*)"
+      "Bash(.specify/scripts/powershell/setup-plan.ps1:*)",
+      "Bash(.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks)",
+      "Bash(npm install:*)",
+      "Bash(mkdir -p:*)",
+      "Bash(npm run dev:*)",
+      "mcp__supabase__list_projects"
     ],
     "deny": [],
     "ask": []
