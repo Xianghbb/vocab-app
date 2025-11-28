@@ -1,6 +1,7 @@
 /**
  * Word fetching utilities for vocabulary learning
  * Provides client-side functions to retrieve words from the dictionary
+ * Includes prioritized fetching for authenticated users based on their learning progress
  */
 
 import { supabase } from '@/lib/supabase/client'
@@ -35,7 +36,7 @@ export interface WordFetchResult {
 export async function fetchRandomWord(): Promise<WordFetchResult> {
   try {
     // Get total count of words in the dictionary
-    const { count, error: countError } = await supabase
+    const { count, error: countError } = await ((supabase as any) as any)
       .from('dictionary')
       .select('*', { count: 'exact', head: true })
 
@@ -60,7 +61,7 @@ export async function fetchRandomWord(): Promise<WordFetchResult> {
     const randomOffset = Math.floor(Math.random() * count)
 
     // Fetch a single random word using the offset
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('dictionary')
       .select('*')
       .range(randomOffset, randomOffset)
@@ -134,7 +135,7 @@ export async function fetchRandomWords(count: number = 5): Promise<WordFetchResu
  */
 export async function fetchWordById(wordId: string): Promise<WordFetchResult> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('dictionary')
       .select('*')
       .eq('id', wordId)
@@ -181,7 +182,7 @@ export async function fetchWordById(wordId: string): Promise<WordFetchResult> {
  */
 export async function fetchAllWords(): Promise<WordFetchResult[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('dictionary')
       .select('*')
       .order('english_word', { ascending: true })
@@ -203,7 +204,7 @@ export async function fetchAllWords(): Promise<WordFetchResult[]> {
       }]
     }
 
-    return data.map(word => ({
+    return data.map((word: any) => ({
       data: word as Word,
       error: null,
       success: true
@@ -219,9 +220,135 @@ export async function fetchAllWords(): Promise<WordFetchResult[]> {
   }
 }
 
+/**
+ * Fetches a prioritized word for a specific user based on their learning progress
+ * First tries to get words marked as 'unknown' or 'new', then falls back to unreviewed words
+ *
+ * @param userId - The ID of the user to fetch a prioritized word for
+ * @returns Promise<WordFetchResult> - A prioritized word or error information
+ */
+export async function fetchPrioritizedWord(userId: string): Promise<WordFetchResult> {
+  try {
+    // Step 1: Try to get words marked as 'unknown' or 'new' for this user
+    const { data: priorityWords, error: priorityError } = await (supabase as any)
+      .from('user_progress')
+      .select(`
+        word_id,
+        status,
+        dictionary!inner(*)
+      `)
+      .eq('user_id', userId)
+      .in('status', ['unknown', 'new'])
+      .order('last_reviewed_at', { ascending: true })
+      .limit(50) // Limit to avoid too much data transfer
+
+    if (priorityError) {
+      console.error('Error fetching priority words:', priorityError)
+      // Fall back to random word if there's an error
+      return await fetchRandomWord()
+    }
+
+    if (priorityWords && priorityWords.length > 0) {
+      // Randomly select one from the priority words
+      const randomIndex = Math.floor(Math.random() * priorityWords.length)
+      const selectedWord = priorityWords[randomIndex]
+
+      return {
+        data: {
+          id: selectedWord.word_id,
+          english_word: selectedWord.dictionary.english_word,
+          chinese_translation: selectedWord.dictionary.chinese_translation,
+          example_sentence: selectedWord.dictionary.example_sentence,
+          created_at: selectedWord.dictionary.created_at,
+          updated_at: selectedWord.dictionary.updated_at
+        },
+        error: null,
+        success: true
+      }
+    }
+
+    // Step 2: If no priority words found, get words not yet marked as 'known' by this user
+    // First, get all word IDs that the user has marked as 'known'
+    const { data: knownWords, error: knownError } = await (supabase as any)
+      .from('user_progress')
+      .select('word_id')
+      .eq('user_id', userId)
+      .eq('status', 'known')
+
+    if (knownError) {
+      console.error('Error fetching known words:', knownError)
+      return await fetchRandomWord()
+    }
+
+    const knownWordIds = knownWords?.map((wp: any) => wp.word_id) || []
+
+    // Get a random word that's not in the known words list
+    if (knownWordIds.length > 0) {
+      const { data: newWord, error: newWordError } = await (supabase as any)
+        .from('dictionary')
+        .select('*')
+        .not('id', 'in', `(${knownWordIds.join(',')})`)
+        .limit(1)
+        .single()
+
+      if (newWordError || !newWord) {
+        // If no new words available, fall back to completely random
+        return await fetchRandomWord()
+      }
+
+      return {
+        data: newWord as Word,
+        error: null,
+        success: true
+      }
+    }
+
+    // Step 3: If user has no progress records at all, just return a random word
+    return await fetchRandomWord()
+
+  } catch (error) {
+    console.error('Unexpected error in fetchPrioritizedWord:', error)
+    return {
+      data: null,
+      error: error instanceof Error ? error : new Error('Unexpected error occurred'),
+      success: false
+    }
+  }
+}
+
+/**
+ * Fetches multiple prioritized words for a specific user
+ *
+ * @param userId - The ID of the user to fetch prioritized words for
+ * @param count - Number of words to fetch (default: 5)
+ * @returns Promise<WordFetchResult[]> - Array of prioritized words or error information
+ */
+export async function fetchPrioritizedWords(userId: string, count: number = 5): Promise<WordFetchResult[]> {
+  try {
+    const results: WordFetchResult[] = []
+
+    // Fetch words one by one to ensure proper prioritization
+    for (let i = 0; i < count; i++) {
+      const result = await fetchPrioritizedWord(userId)
+      results.push(result)
+    }
+
+    return results
+  } catch (error) {
+    console.error('Unexpected error in fetchPrioritizedWords:', error)
+    return [{
+      data: null,
+      error: error instanceof Error ? error : new Error('Unexpected error occurred'),
+      success: false
+    }]
+  }
+}
+
 export default {
   fetchRandomWord,
   fetchRandomWords,
   fetchWordById,
-  fetchAllWords
+  fetchAllWords,
+  fetchPrioritizedWord,
+  fetchPrioritizedWords
 }

@@ -17,8 +17,9 @@ export default function SupabaseTest() {
     const testConnection = async () => {
       try {
         // Simple test query to check if we're connected
-        const { data, error } = await supabase.from('information_schema.tables')
-          .select('table_name')
+        // Use type assertion to bypass TypeScript strict checking for this test
+        const { data, error } = await (supabase as any).from('dictionary')
+          .select('id')
           .limit(1)
 
         if (error) {
