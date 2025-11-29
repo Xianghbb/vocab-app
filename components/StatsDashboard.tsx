@@ -185,6 +185,13 @@ export default function StatsDashboard() {
     setError(null)
 
     try {
+      // Validate user ID
+      if (!user?.id) {
+        throw new Error('No user ID available')
+      }
+
+      console.log('Loading dashboard stats for user:', user.id)
+
       // Fetch all statistics in parallel
       const [statsData, breakdownData, streakData] = await Promise.all([
         fetchUserStats(user.id),
@@ -192,12 +199,19 @@ export default function StatsDashboard() {
         fetchLearningStreak(user.id)
       ])
 
-      setStats(statsData)
-      setBreakdown(breakdownData)
-      setStreak(streakData)
+      console.log('Dashboard stats loaded:', { statsData, breakdownData, streakData })
+
+      // Handle null returns gracefully
+      setStats(statsData || { total: 0, today: 0, thisWeek: 0, remaining: 0 })
+      setBreakdown(breakdownData || { new: 0, known: 0, unknown: 0 })
+      setStreak(streakData || { currentStreak: 0, longestStreak: 0, lastStudyDate: null })
     } catch (err) {
       setError('Failed to load statistics')
-      console.error('Error loading dashboard stats:', err)
+      console.error('Error loading dashboard stats:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        details: err instanceof Error ? err.stack : String(err),
+        userId: user?.id
+      })
     } finally {
       setLoading(false)
     }

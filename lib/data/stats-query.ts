@@ -14,41 +14,105 @@ import type { UserStatistics } from '@/types'
  */
 export async function fetchUserStats(userId: string): Promise<UserStatistics | null> {
   try {
+    // Validate userId
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      console.error('Invalid userId provided to fetchUserStats:', userId)
+      return null
+    }
+
+    console.log('Fetching user statistics for userId:', userId)
+
     // Get total reviewed words (any word with progress record)
+    console.log('Fetching total reviewed words...')
     const { data: totalData, error: totalError } = await (supabase as any)
       .from('user_progress')
       .select('word_id', { count: 'exact', head: true })
       .eq('user_id', userId)
 
-    if (totalError) throw totalError
+    if (totalError) {
+      console.error('Error fetching total reviewed words:', {
+        message: totalError.message,
+        details: totalError.details,
+        hint: totalError.hint,
+        code: totalError.code
+      })
+      throw new Error(`Total words query failed: ${totalError.message}`)
+    }
 
-    // Get today's reviews
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+    // Get today's reviews with proper date formatting
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+
+    console.log('Fetching today\'s reviews:', {
+      start: todayStart.toISOString(),
+      end: todayEnd.toISOString()
+    })
+
     const { data: todayData, error: todayError } = await (supabase as any)
       .from('user_progress')
       .select('word_id', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .gte('last_reviewed_at', `${today}T00:00:00`)
-      .lt('last_reviewed_at', `${today}T23:59:59`)
+      .gte('last_reviewed_at', todayStart.toISOString())
+      .lt('last_reviewed_at', todayEnd.toISOString())
 
-    if (todayError) throw todayError
+    if (todayError) {
+      console.error('Error fetching today\'s reviews:', {
+        message: todayError.message,
+        details: todayError.details,
+        hint: todayError.hint,
+        code: todayError.code
+      })
+      throw new Error(`Today's reviews query failed: ${todayError.message}`)
+    }
 
     // Get this week's reviews (last 7 days)
     const weekAgo = new Date()
     weekAgo.setDate(weekAgo.getDate() - 7)
+    weekAgo.setHours(0, 0, 0, 0) // Start of day 7 days ago
+
+    console.log('Fetching this week\'s reviews:', {
+      from: weekAgo.toISOString(),
+      to: now.toISOString()
+    })
+
     const { data: weekData, error: weekError } = await (supabase as any)
       .from('user_progress')
       .select('word_id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .gte('last_reviewed_at', weekAgo.toISOString())
 
-    if (weekError) throw weekError
+    if (weekError) {
+      console.error('Error fetching this week\'s reviews:', {
+        message: weekError.message,
+        details: weekError.details,
+        hint: weekError.hint,
+        code: weekError.code
+      })
+      throw new Error(`This week's reviews query failed: ${weekError.message}`)
+    }
 
     // Get remaining words (new or unknown status, or no progress)
+    console.log('Fetching remaining words count...')
     const { data: remainingData, error: remainingError } = await (supabase as any)
       .rpc('get_remaining_words_count', { p_user_id: userId })
 
-    if (remainingError) throw remainingError
+    if (remainingError) {
+      console.error('Error fetching remaining words:', {
+        message: remainingError.message,
+        details: remainingError.details,
+        hint: remainingError.hint,
+        code: remainingError.code
+      })
+      throw new Error(`Remaining words RPC failed: ${remainingError.message}`)
+    }
+
+    console.log('Statistics fetched successfully:', {
+      total: totalData?.count || 0,
+      today: todayData?.count || 0,
+      thisWeek: weekData?.count || 0,
+      remaining: remainingData || 0
+    })
 
     return {
       total: totalData?.count || 0,
@@ -57,7 +121,12 @@ export async function fetchUserStats(userId: string): Promise<UserStatistics | n
       remaining: remainingData || 0
     }
   } catch (error) {
-    console.error('Error fetching user statistics:', error)
+    console.error('Error fetching user statistics:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: error instanceof Error ? error.stack : String(error),
+      errorData: JSON.stringify(error, null, 2),
+      userId: userId
+    })
     return null
   }
 }

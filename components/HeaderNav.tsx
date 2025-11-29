@@ -9,7 +9,6 @@
 import Link from 'next/link'
 import { useUser, SignInButton, SignedIn, SignedOut } from '@clerk/nextjs'
 import { UserButton } from '@clerk/nextjs'
-import { Settings, BookOpen } from 'lucide-react'
 
 export default function HeaderNav() {
   const { user, isLoaded } = useUser()
@@ -19,7 +18,7 @@ export default function HeaderNav() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <BookOpen className="w-6 h-6 text-blue-600" />
+            <span className="text-2xl">📚</span>
             <span className="text-xl font-bold text-gray-800">VocabApp</span>
           </div>
           <div className="flex items-center space-x-4">
@@ -35,7 +34,7 @@ export default function HeaderNav() {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo/Brand */}
         <Link href="/" className="flex items-center space-x-2">
-          <BookOpen className="w-6 h-6 text-blue-600" />
+          <span className="text-2xl">📚</span>
           <span className="text-xl font-bold text-gray-800">VocabApp</span>
         </Link>
 
@@ -47,7 +46,7 @@ export default function HeaderNav() {
             className="p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-lg hover:bg-gray-100"
             title="Dashboard"
           >
-            <Settings className="w-5 h-5" />
+            <span className="text-xl">⚙️</span>
           </Link>
 
           {/* Authentication Controls */}
