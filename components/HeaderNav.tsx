@@ -7,11 +7,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useUser, SignInButton, SignedIn, SignedOut } from '@clerk/nextjs'
+import { useUser, SignInButton, SignedIn, SignedOut, Protect } from '@clerk/nextjs'
 import { UserButton } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
 
 export default function HeaderNav() {
   const { user, isLoaded } = useUser()
+  const router = useRouter()
 
   if (!isLoaded) {
     return (
@@ -48,6 +50,32 @@ export default function HeaderNav() {
           >
             <span className="text-xl">⚙️</span>
           </Link>
+
+          {/* Pricing/Subscription Link */}
+          <SignedIn>
+            {/* Show Upgrade button for users without vocab:pro permission */}
+            <Protect
+              permission="vocab:pro"
+              fallback={
+                <Link
+                  href="/pricing"
+                  className="px-3 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all font-medium text-sm shadow-sm"
+                  title="Upgrade to Pro"
+                >
+                  Upgrade
+                </Link>
+              }
+            >
+              {/* Show Manage link for users with vocab:pro permission */}
+              <Link
+                href="/pricing"
+                className="px-3 py-2 text-gray-600 hover:text-blue-600 transition-colors rounded-lg hover:bg-gray-100 font-medium text-sm"
+                title="Manage Subscription"
+              >
+                Manage
+              </Link>
+            </Protect>
+          </SignedIn>
 
           {/* Authentication Controls */}
           <SignedOut>

@@ -7,9 +7,91 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUser } from '@clerk/nextjs'
+import { useUser, useAuth, Protect } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
 import { fetchUserStats, fetchProgressBreakdown, fetchLearningStreak } from '@/lib/data/stats-query'
 import type { UserStatistics, ProgressBreakdown, LearningStreak } from '@/types'
+
+/**
+ * Pro Stat card component with feature gating using Protect
+ */
+function ProStatCard({
+  title,
+  value,
+  icon,
+  color = 'blue',
+  subtitle,
+  permission = 'vocab:pro'
+}: {
+  title: string
+  value: number | string
+  icon: string
+  color?: 'blue' | 'green' | 'purple' | 'orange' | 'red'
+  subtitle?: string
+  permission?: string
+}) {
+  const router = useRouter()
+  const colorClasses = {
+    blue: 'bg-blue-50 border-blue-200 text-blue-800',
+    green: 'bg-green-50 border-green-200 text-green-800',
+    purple: 'bg-purple-50 border-purple-200 text-purple-800',
+    orange: 'bg-orange-50 border-orange-200 text-orange-800',
+    red: 'bg-red-50 border-red-200 text-red-800'
+  }
+
+  const iconBgClasses = {
+    blue: 'bg-blue-100 text-blue-600',
+    green: 'bg-green-100 text-green-600',
+    purple: 'bg-purple-100 text-purple-600',
+    orange: 'bg-orange-100 text-orange-600',
+    red: 'bg-red-100 text-red-600'
+  }
+
+  return (
+    <Protect
+      permission={permission}
+      fallback={
+        <div
+          className={`p-6 rounded-xl border-2 border-gray-200 bg-gray-50 relative overflow-hidden transition-all hover:shadow-md cursor-pointer`}
+          onClick={() => router.push('/pricing')}
+        >
+          {/* Lock overlay */}
+          <div className="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-10">
+            <div className="text-center">
+              <div className="text-4xl mb-2">🔒</div>
+              <p className="text-white font-semibold text-sm">Upgrade to Unlock</p>
+            </div>
+          </div>
+
+          {/* Content (dimmed) */}
+          <div className="flex items-center justify-between opacity-30">
+            <div className="flex-1">
+              <p className="text-sm font-medium opacity-75 mb-1">{title}</p>
+              <p className="text-3xl font-bold">{typeof value === 'number' ? value.toLocaleString() : value}</p>
+              {subtitle && <p className="text-sm opacity-60 mt-1">{subtitle}</p>}
+            </div>
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${iconBgClasses[color]}`}>
+              <span className="text-2xl">{icon}</span>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <div className={`p-6 rounded-xl border-2 ${colorClasses[color]} transition-all hover:shadow-md`}>
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-sm font-medium opacity-75 mb-1">{title}</p>
+            <p className="text-3xl font-bold">{typeof value === 'number' ? value.toLocaleString() : value}</p>
+            {subtitle && <p className="text-sm opacity-60 mt-1">{subtitle}</p>}
+          </div>
+          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${iconBgClasses[color]}`}>
+            <span className="text-2xl">{icon}</span>
+          </div>
+        </div>
+      </div>
+    </Protect>
+  )
+}
 
 /**
  * Stat card component for individual statistics
@@ -19,13 +101,17 @@ function StatCard({
   value,
   icon,
   color = 'blue',
-  subtitle
+  subtitle,
+  isLocked = false,
+  onUpgradeClick
 }: {
   title: string
   value: number | string
   icon: string
   color?: 'blue' | 'green' | 'purple' | 'orange' | 'red'
   subtitle?: string
+  isLocked?: boolean
+  onUpgradeClick?: () => void
 }) {
   const colorClasses = {
     blue: 'bg-blue-50 border-blue-200 text-blue-800',
@@ -41,6 +127,32 @@ function StatCard({
     purple: 'bg-purple-100 text-purple-600',
     orange: 'bg-orange-100 text-orange-600',
     red: 'bg-red-100 text-red-600'
+  }
+
+  if (isLocked) {
+    return (
+      <div className={`p-6 rounded-xl border-2 border-gray-200 bg-gray-50 relative overflow-hidden transition-all hover:shadow-md cursor-pointer`} onClick={onUpgradeClick}>
+        {/* Lock overlay */}
+        <div className="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-10">
+          <div className="text-center">
+            <div className="text-4xl mb-2">🔒</div>
+            <p className="text-white font-semibold text-sm">Upgrade to Unlock</p>
+          </div>
+        </div>
+
+        {/* Content (dimmed) */}
+        <div className="flex items-center justify-between opacity-30">
+          <div className="flex-1">
+            <p className="text-sm font-medium opacity-75 mb-1">{title}</p>
+            <p className="text-3xl font-bold">{typeof value === 'number' ? value.toLocaleString() : value}</p>
+            {subtitle && <p className="text-sm opacity-60 mt-1">{subtitle}</p>}
+          </div>
+          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${iconBgClasses[color]}`}>
+            <span className="text-2xl">{icon}</span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -132,13 +244,138 @@ function ProgressBreakdown({ breakdown }: { breakdown: ProgressBreakdown }) {
 }
 
 /**
+ * Pro Learning streak component with feature gating
+ */
+function ProLearningStreak({ streak, permission = 'vocab:pro' }: { streak: LearningStreak, permission?: string }) {
+  const router = useRouter()
+  return (
+    <Protect
+      permission={permission}
+      fallback={
+        <div
+          className="bg-gradient-to-br from-gray-100 to-gray-200 p-6 rounded-xl border border-gray-300 relative overflow-hidden cursor-pointer"
+          onClick={() => router.push('/pricing')}
+        >
+          {/* Lock overlay */}
+          <div className="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-10">
+            <div className="text-center">
+              <div className="text-4xl mb-2">🔒</div>
+              <p className="text-white font-semibold text-sm">Pro Feature</p>
+            </div>
+          </div>
+
+          {/* Content (dimmed) */}
+          <div className="flex items-center justify-between mb-4 opacity-30">
+            <h3 className="text-lg font-semibold text-gray-800">Learning Streak</h3>
+            <div className="w-12 h-12 rounded-lg bg-gray-300 flex items-center justify-center">
+              <span className="text-2xl">🔥</span>
+            </div>
+          </div>
+
+          <div className="space-y-3 opacity-30">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-700 font-medium">Current Streak</span>
+              <span className="text-2xl font-bold text-gray-800">{streak.currentStreak}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-gray-700 font-medium">Longest Streak</span>
+              <span className="text-xl font-semibold text-gray-800">{streak.longestStreak}</span>
+            </div>
+
+            {streak.lastStudyDate && (
+              <div className="pt-3 border-t border-gray-300">
+                <p className="text-sm text-gray-600">
+                  Last studied: {new Date(streak.lastStudyDate).toLocaleDateString()}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      }
+    >
+      <div className="bg-gradient-to-br from-purple-50 to-indigo-100 p-6 rounded-xl border border-purple-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-purple-800">Learning Streak <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full ml-2">PRO</span></h3>
+          <div className="w-12 h-12 rounded-lg bg-purple-200 flex items-center justify-center">
+            <span className="text-2xl">🔥</span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-purple-700 font-medium">Current Streak</span>
+            <span className="text-2xl font-bold text-purple-800">{streak.currentStreak}</span>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-purple-700 font-medium">Longest Streak</span>
+            <span className="text-xl font-semibold text-purple-800">{streak.longestStreak}</span>
+          </div>
+
+          {streak.lastStudyDate && (
+            <div className="pt-3 border-t border-purple-200">
+              <p className="text-sm text-purple-600">
+                Last studied: {new Date(streak.lastStudyDate).toLocaleDateString()}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </Protect>
+  )
+}
+
+/**
  * Learning streak component
  */
-function LearningStreak({ streak }: { streak: LearningStreak }) {
+function LearningStreak({ streak, isLocked = false, onUpgradeClick }: { streak: LearningStreak, isLocked?: boolean, onUpgradeClick?: () => void }) {
+  if (isLocked) {
+    return (
+      <div className="bg-gradient-to-br from-gray-100 to-gray-200 p-6 rounded-xl border border-gray-300 relative overflow-hidden cursor-pointer" onClick={onUpgradeClick}>
+        {/* Lock overlay */}
+        <div className="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-10">
+          <div className="text-center">
+            <div className="text-4xl mb-2">🔒</div>
+            <p className="text-white font-semibold text-sm">Pro Feature</p>
+          </div>
+        </div>
+
+        {/* Content (dimmed) */}
+        <div className="flex items-center justify-between mb-4 opacity-30">
+          <h3 className="text-lg font-semibold text-gray-800">Learning Streak</h3>
+          <div className="w-12 h-12 rounded-lg bg-gray-300 flex items-center justify-center">
+            <span className="text-2xl">🔥</span>
+          </div>
+        </div>
+
+        <div className="space-y-3 opacity-30">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-700 font-medium">Current Streak</span>
+            <span className="text-2xl font-bold text-gray-800">{streak.currentStreak}</span>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-gray-700 font-medium">Longest Streak</span>
+            <span className="text-xl font-semibold text-gray-800">{streak.longestStreak}</span>
+          </div>
+
+          {streak.lastStudyDate && (
+            <div className="pt-3 border-t border-gray-300">
+              <p className="text-sm text-gray-600">
+                Last studied: {new Date(streak.lastStudyDate).toLocaleDateString()}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-gradient-to-br from-purple-50 to-indigo-100 p-6 rounded-xl border border-purple-200">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-purple-800">Learning Streak</h3>
+        <h3 className="text-lg font-semibold text-purple-800">Learning Streak <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full ml-2">PRO</span></h3>
         <div className="w-12 h-12 rounded-lg bg-purple-200 flex items-center justify-center">
           <span className="text-2xl">🔥</span>
         </div>
@@ -172,6 +409,7 @@ function LearningStreak({ streak }: { streak: LearningStreak }) {
  */
 export default function StatsDashboard() {
   const { user, isLoaded } = useUser()
+  const router = useRouter()
   const [stats, setStats] = useState<UserStatistics | null>(null)
   const [breakdown, setBreakdown] = useState<ProgressBreakdown | null>(null)
   const [streak, setStreak] = useState<LearningStreak | null>(null)
@@ -298,20 +536,22 @@ export default function StatsDashboard() {
           subtitle="Words reviewed today"
         />
 
-        <StatCard
+        <ProStatCard
           title="This Week"
           value={stats?.thisWeek || 0}
           icon="📈"
           color="purple"
           subtitle="Words reviewed this week"
+          permission="vocab:pro"
         />
 
-        <StatCard
+        <ProStatCard
           title="Remaining"
           value={stats?.remaining || 0}
           icon="🎯"
           color="orange"
           subtitle="Words still to learn"
+          permission="vocab:pro"
         />
       </div>
 
@@ -322,7 +562,10 @@ export default function StatsDashboard() {
         )}
 
         {streak && (
-          <LearningStreak streak={streak} />
+          <ProLearningStreak
+            streak={streak}
+            permission="vocab:pro"
+          />
         )}
       </div>
 
